@@ -1,0 +1,457 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon AI Chatbot</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #09080d;
+      color: white;
+      font-family: Arial, Helvetica, sans-serif;
+      overflow: hidden;
+    }
+
+    /* Main screen */
+    .chat-screen {
+      position: relative;
+      isolation: isolate;
+      width: 100%;
+      height: 100vh;
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: radial-gradient(
+        ellipse at center,
+        #17101f 0%,
+        #0b0910 48%,
+        #07070a 100%
+      );
+    }
+
+    /* Animated background */
+    .glow {
+      position: absolute;
+      z-index: -1;
+      width: min(85vw, 650px);
+      height: min(80vh, 550px);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      filter: blur(35px);
+      opacity: 0.9;
+      pointer-events: none;
+    }
+
+    .glow::before,
+    .glow::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+    }
+
+    .glow::before {
+      background:
+        radial-gradient(
+          ellipse at 70% 35%,
+          rgba(202, 0, 255, 0.85),
+          transparent 29%
+        ),
+        radial-gradient(
+          ellipse at 42% 58%,
+          rgba(113, 0, 255, 0.85),
+          transparent 36%
+        ),
+        radial-gradient(
+          ellipse at 65% 75%,
+          rgba(77, 0, 210, 0.6),
+          transparent 28%
+        );
+
+      animation: purpleFlow 8s ease-in-out infinite alternate;
+    }
+
+    .glow::after {
+      background: linear-gradient(
+        145deg,
+        transparent 35%,
+        rgba(101, 0, 255, 0.08) 42%,
+        rgba(131, 20, 255, 0.8) 48%,
+        rgba(52, 10, 210, 0.45) 51%,
+        transparent 60%
+      );
+
+      animation: blueFlow 7s ease-in-out infinite alternate;
+    }
+
+    @keyframes purpleFlow {
+      0% {
+        transform: translate(-10%, 8%) rotate(-15deg) scale(0.85);
+      }
+      50% {
+        transform: translate(8%, -7%) rotate(12deg) scale(1.15);
+      }
+      100% {
+        transform: translate(-3%, 4%) rotate(25deg) scale(0.95);
+      }
+    }
+
+    @keyframes blueFlow {
+      0% {
+        transform: translate(-8%, -6%) rotate(-18deg) scale(0.9);
+      }
+      50% {
+        transform: translate(8%, 8%) rotate(8deg) scale(1.15);
+      }
+      100% {
+        transform: translate(-5%, 0%) rotate(-5deg) scale(1);
+      }
+    }
+
+    /* Chatbot content */
+    .chat-content {
+      width: min(420px, 78vw);
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      transform: translateY(-1vh);
+    }
+
+    .chat-title {
+      font-size: clamp(12px, 1.4vw, 17px);
+      font-weight: 400;
+      text-align: center;
+      color: #f3eef8;
+      letter-spacing: 0.1px;
+    }
+
+    /* Conversation messages */
+    .messages {
+      width: 100%;
+      max-height: 38vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scrollbar-width: thin;
+      scrollbar-color: #65327d transparent;
+    }
+
+    .message {
+      max-width: 90%;
+      padding: 10px 13px;
+      border: 1px solid rgba(205, 39, 255, 0.3);
+      border-radius: 13px;
+      font-size: 12px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: rgba(117, 38, 160, 0.4);
+      color: #fff;
+    }
+
+    .message.bot {
+      align-self: flex-start;
+      background: rgba(21, 12, 29, 0.8);
+      color: #eee3f5;
+    }
+
+    .message.error {
+      border-color: rgba(255, 100, 120, 0.5);
+      color: #ffb6c1;
+    }
+
+    /* Input box */
+    .input-box {
+      width: 100%;
+      min-height: 45px;
+      padding: 8px 10px 8px 13px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+
+      border: 1px solid rgba(205, 39, 255, 0.8);
+      border-radius: 18px;
+      background: rgba(21, 12, 29, 0.65);
+
+      box-shadow:
+        0 0 8px rgba(170, 0, 255, 0.12),
+        inset 0 0 12px rgba(160, 0, 255, 0.04);
+
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+
+      transition: border-color 0.25s, box-shadow 0.25s;
+    }
+
+    .input-box:focus-within {
+      border-color: #d94aff;
+      box-shadow: 0 0 18px rgba(184, 0, 255, 0.25);
+    }
+
+    .icon-button {
+      flex-shrink: 0;
+      border: none;
+      background: transparent;
+      color: #c5a6d5;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .plus-button {
+      width: 17px;
+      height: 24px;
+      font-size: 20px;
+      font-weight: 300;
+    }
+
+    .message-input {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: white;
+      font-size: 11px;
+      font-family: inherit;
+      caret-color: #db62ff;
+    }
+
+    .message-input::placeholder {
+      color: #99899f;
+    }
+
+    .send-button {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(222, 126, 255, 0.8);
+      background: rgba(134, 31, 196, 0.25);
+      color: white;
+      cursor: pointer;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .send-button:hover {
+      background: rgba(178, 43, 255, 0.65);
+      transform: scale(1.08);
+    }
+
+    .send-button:disabled {
+      opacity: 0.5;
+      cursor: wait;
+    }
+
+    .send-button svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    @media (max-width: 480px) {
+      .chat-content {
+        width: 82vw;
+        gap: 13px;
+      }
+
+      .input-box {
+        min-height: 42px;
+      }
+
+      .glow {
+        width: 110vw;
+        height: 65vh;
+        filter: blur(28px);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .glow::before,
+      .glow::after {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="chat-screen">
+
+    <div class="glow" aria-hidden="true"></div>
+
+    <section class="chat-content">
+
+      <h1 class="chat-title" id="chatTitle">
+        What's on your mind today?
+      </h1>
+
+      <div
+        class="messages"
+        id="messages"
+        aria-live="polite"
+        aria-label="Chat conversation"
+      ></div>
+
+      <form class="input-box" id="chatForm">
+
+        <button
+          class="icon-button plus-button"
+          type="button"
+          id="plusButton"
+          aria-label="Focus message input"
+        >+</button>
+
+        <input
+          class="message-input"
+          id="messageInput"
+          type="text"
+          placeholder="Ask anything"
+          autocomplete="off"
+          aria-label="Enter your message"
+        />
+
+        <button
+          class="send-button"
+          id="sendButton"
+          type="submit"
+          aria-label="Send message"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M5 12a7 7 0 0 1 14 0" />
+            <path d="M5 12v3a2 2 0 0 0 2 2h1v-5H5Z" />
+            <path d="M19 12v3a2 2 0 0 1-2 2h-1v-5h3Z" />
+          </svg>
+        </button>
+
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const chatForm = document.getElementById("chatForm");
+    const messageInput = document.getElementById("messageInput");
+    const messages = document.getElementById("messages");
+    const sendButton = document.getElementById("sendButton");
+    const plusButton = document.getElementById("plusButton");
+    const chatTitle = document.getElementById("chatTitle");
+
+    // Display a user message or bot response
+    function addMessage(text, who) {
+      const messageElement = document.createElement("div");
+
+      messageElement.classList.add("message", who);
+      messageElement.textContent = text;
+
+      messages.appendChild(messageElement);
+      messages.scrollTop = messages.scrollHeight;
+
+      return messageElement;
+    }
+
+    // Send message to the backend
+    chatForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+
+      const text = messageInput.value.trim();
+
+      if (!text || sendButton.disabled) {
+        return;
+      }
+
+      addMessage(text, "user");
+
+      messageInput.value = "";
+      sendButton.disabled = true;
+
+      const loadingMessage = addMessage("Thinking...", "bot");
+
+      try {
+        const response = await fetch("/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: text
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            typeof data.error === "string"
+              ? data.error
+              : "Server error: " + response.status
+          );
+        }
+
+        loadingMessage.remove();
+
+        if (typeof data.reply !== "string") {
+          throw new Error("The server did not return a valid reply.");
+        }
+
+        addMessage(data.reply, "bot");
+
+        chatTitle.style.display = "none";
+
+      } catch (error) {
+        loadingMessage.remove();
+
+        const errorMessage = addMessage(
+          error instanceof Error
+            ? error.message
+            : "Could not get a response. Check that your backend is running.",
+          "bot"
+        );
+
+        errorMessage.classList.add("error");
+        console.error("Chat request failed:", error);
+
+      } finally {
+        sendButton.disabled = false;
+        messageInput.focus();
+      }
+    });
+
+    plusButton.addEventListener("click", function () {
+      messageInput.focus();
+    });
+  </script>
+</body>
+</html>
+
